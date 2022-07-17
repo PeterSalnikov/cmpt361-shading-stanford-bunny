@@ -1,7 +1,6 @@
 /*
     Initialization
 */
-
 function get_vertices(){
     return [vec3(-1.537658,1.170480,0.746700),
 			vec3(0.347060,-0.251982,0.860968),
@@ -15670,132 +15669,210 @@ function get_faces(){
 			vec3(4870,4212,2752),
 			vec3(4872,1104,2761)];
 }
-
-
 // The WebGL context.
 var gl
 var canvas;
 
+// Variables for spinning the cube
+var angle;
+var angularSpeed;
+var zModify;
 // Sets up the canvas and WebGL context.
 function initializeContext() {
-    // TODO: Get and store the webgl context from the canvas    
+    // Get and store the webgl context from the canvas    
     canvas = document.getElementById("myCanvas");
     gl = canvas.getContext("webgl2");
 
-    // TODO: Determine the ratio between physical pixels and CSS pixels
+    // Determine the ratio between physical pixels and CSS pixels
     const pixelRatio = window.devicePixelRatio || 1;
 
-    // TODO: Set the width and height of the canvas
+    // Set the width and height of the canvas
     // using clientWidth and clientHeight
     canvas.width = pixelRatio * canvas.clientWidth;
     canvas.height = pixelRatio * canvas.clientHeight;
 
-    // TODO: Set the viewport size
+    // Set the viewport size
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    // TODO: Set the clear color to white.
-    gl.clearColor(1, 1, 1, 0);
-    // TODO: Set the line width to 1.0.
+    // Set the clear color to black.
+    gl.clearColor(0, 0, 0, 1);
+    // Set the line width to 1.0.
     gl.lineWidth(1.0);
+
+    // TODO: Enable depth testing
+    gl.enable(gl.DEPTH_TEST);
 
     logMessage("WebGL initialized.");
 }
 
 async function setup() {
-    // TODO: Initialize the context.
+    // Initialize the context.
     initializeContext();
 
     // Set event listeners
     setEventListeners(canvas);
 
-    // TODO: Create vertex buffer data.
+    // Create cube data.
+    //colorCube();
+
+    // Create vertex buffer data.
     createBuffers();
 
-    // TODO: Load shader files
+    // Load shader files
     await loadShaders();
 
-    // TODO: Compile the shaders
+    // Compile the shaders
     compileShaders();
 
-    // TODO: Set the uniform variables
-    setUniformVariables();
-
-    // TODO: Create vertex array objects
+    // Create vertex array objects
     createVertexArrayObjects();
 
-    // TODO: Draw!
-    render();
+    // TODO: Initialize angle and angularSpeed.
+    angle = 0.0;
+    angularSpeed = 0.0;
+	zModify = 0;
+    // Draw!
+    requestAnimationFrame(render)
 
 };
-
-window.onload = setup;
-
-// Vertex position is in the format [x0, y0, z0, x1, y1, ...]
-// Note that a vertex can have multiple attributes (ex. colors, normals, texture coordinates, etc.)
-
+//THESE LINES BEFORE CALLING SETUP ARE THE MOST IMPORTANT; THEY SET UP THE VERTICES AND INDICES TO BE USED FOR RENDERING
 var indices = get_faces();
 var vertices = get_vertices();
 
 var positions = [];
 
 indices = flatten(indices);
-vertices = flatten(vertices);
-
-
-
+//shift the indices by 1, since javascript indexes start at 0
+indices = indices.map(i => i - 1);
+//vertices = flatten(vertices);
+// console.log(indices.length);
+// console.log(vertices.length);
+// vertices = vertices.map(i => i / 4);
+var max = 0;
 for(var i = 0; i < indices.length; i++)
 {
 
-	positions.push(vertices[indices[i]]);
+    positions.push(vertices[indices[i]]);
+    // console.log(indices[i]);
+    
+    
+        if (indices[i] > max)
+        {
+            
+            max = indices[i+1];
 
+        }
+    
 }
 
-/*var positions = [
-    -0.8, 0.6, 0,
-    0.8, 0.6, 0,
-    0.8, -0.6, 0,
-    -0.8, 0.6, 0,
-    0.8, -0.6, 0,
-    -0.8, -0.6, 0
-];*/
+console.log(max);
+console.log(vertices.length);
+console.log(positions);
+// console.log(positions.length);
+// flatten
+positions = flatten(positions);
+// positions = positions.map( i => i / 3);
+
+var colors = new Array(positions.length).fill([0,0,0,0.5]);
+
+    colors = flatten(colors);
+
+window.onload = setup;
+
+// Vertex position is in the format [x0, y0, z0, x1, y1, ...]
+// Note that a vertex can have multiple attributes (ex. colors, normals, texture coordinates, etc.)
+
 
 // Vertex color data in the format [r0, g0, b0, a0, r1, g1, ...].
 // Note that for every vertex position, we have an associated color.
 // The number of tuples between different vertex attributes must be the same.
-/*var colors = [
-    1, 0, 0, 1, // red
-    0, 1, 0, 1, // green
-    0, 1, 1, 1, // blue
-    1, 1, 0, 1, // red
-    0, 1, 1, 1, // blue
-    1, 1, 1, 1 // purple
-];*/
+//var colors = [];
 
-var colors = new Array(positions.length).fill([1,0,0,1]);
 
-colors = flatten(colors);
+function colorCube()
+{
+    /*quad( 1, 0, 3, 2 );
+    quad( 2, 3, 7, 6 );
+    quad( 3, 0, 4, 7 );
+    quad( 6, 5, 1, 2 );
+    quad( 4, 5, 6, 7 );
+    quad( 5, 4, 0, 1 );*/
 
-//console.log(positions);
+    indices = flatten(indices);
+    vertices = flatten(vertices);
+
+    //vertices = vertices.map(i => i / 2);
+
+    // flatten
+    positions = flatten(positions);
+    
+}
+
+// console.log(positions);
+
+/*function quad(a, b, c, d)
+{
+    var vertices = [
+        vec3( -0.5, -0.5,  0.5),
+        vec3( -0.5,  0.5,  0.5),
+        vec3(  0.5,  0.5,  0.5),
+        vec3(  0.5, -0.5,  0.5),
+        vec3( -0.5, -0.5, -0.5),
+        vec3( -0.5,  0.5, -0.5),
+        vec3(  0.5,  0.5, -0.5),
+        vec3(  0.5, -0.5, -0.5)
+    ];
+
+    var vertexColors = [
+        [ 0.0, 0.0, 0.0, 1.0 ],  // black
+        [ 1.0, 0.0, 0.0, 1.0 ],  // red
+        [ 1.0, 1.0, 0.0, 1.0 ],  // yellow
+        [ 0.0, 1.0, 0.0, 1.0 ],  // green
+        [ 0.0, 0.0, 1.0, 1.0 ],  // blue
+        [ 1.0, 0.0, 1.0, 1.0 ],  // magenta
+        [ 0.0, 1.0, 1.0, 1.0 ],  // cyan
+        [ 1.0, 1.0, 1.0, 1.0 ]   // white
+    ];
+
+    // We need to parition the quad into two triangles in order for
+    // WebGL to be able to render it.  In this case, we create two
+    // triangles from the quad indices
+
+    //vertex color assigned by the index of the vertex
+
+    var indices = [ a, b, c, a, c, d ];
+
+    for ( var i = 0; i < indices.length; ++i ) {
+        positions.push( vertices[indices[i]] );
+        //colors.push( vertexColors[indices[i]] );
+
+        // for solid colored faces use
+        colors.push(vertexColors[a]);
+
+    }
+}*/
 
 // Buffer objects
 var position_buffer;
 var color_buffer;
 
+
+
 // Creates buffers using provided data.
 function createBuffers() {
-    // TODO: Create a position buffer for the vertices.
+    // Create a position buffer for the vertices.
     // In WebGL, the default winding order is counter-clock-wise,
     // meaning that the order of vertices in a triangle must occur
     // in a counter-clock-wise sequence relative to the viewer to be
     // considered front-facing.
     position_buffer = gl.createBuffer();
 
-    // TODO: Bind the buffer as an ARRAY_BUFFER to tell WebGL it will
+    // Bind the buffer as an ARRAY_BUFFER to tell WebGL it will
     // be used as a vertex buffer. Note that if another buffer was previously
     // bound to ARRAY_BUFFER, that binding will be broken.
     gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
 
-    // TODO: Set the buffer data of the buffer bound to target 
+    // Set the buffer data of the buffer bound to target 
     // ARRAY_BUFFER with STATIC_DRAW usage. The usage is a hint
     // that tells the API & driver the expected usage pattern of the backing
     // data store. This allows it to make some optimizations.
@@ -15803,7 +15880,7 @@ function createBuffers() {
         new Float32Array(positions),
         gl.STATIC_DRAW);
 
-    // TODO: Repeat for the color vertex data.
+    // Repeat for the color vertex data.
     color_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
     gl.bufferData(gl.ARRAY_BUFFER,
@@ -15851,13 +15928,13 @@ var prog;
 // Compile the GLSL shader stages and combine them
 // into a shader program.
 function compileShaders() {
-    // TODO: Create a shader of type VERTEX_SHADER.
+    // Create a shader of type VERTEX_SHADER.
     vs = gl.createShader(gl.VERTEX_SHADER);
-    // TODO: Specify the shader source code.
+    // Specify the shader source code.
     gl.shaderSource(vs, vs_source);
-    // TODO: Compile the shader.
+    // Compile the shader.
     gl.compileShader(vs);
-    // TODO: Check that the shader actually compiled (COMPILE_STATUS).
+    // Check that the shader actually compiled (COMPILE_STATUS).
     // This can be done using the getShaderParameter function.
     // The error message can be retrieved with getShaderInfoLog.
     if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
@@ -15865,7 +15942,7 @@ function compileShaders() {
         gl.deleteShader(vs);
     }
 
-    // TODO: Repeat for the fragment shader.
+    // Repeat for the fragment shader.
     fs = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fs, fs_source);
     gl.compileShader(fs);
@@ -15878,24 +15955,26 @@ function compileShaders() {
     // Next we have to create a shader program
     // using the shader stages that we compiled.
 
-    // TODO: Create a shader program.
+    // Create a shader program.
     prog = gl.createProgram();
 
-    // TODO: Attach the vertex and fragment shaders
+    // Attach the vertex and fragment shaders
     // to the program.
     gl.attachShader(prog, vs);
     gl.attachShader(prog, fs);
 
-    // TODO: Link the program
+    // Link the program
     gl.linkProgram(prog);
 
-    // TODO: Check the LINK_STATUS using getProgramParameter
+    // Check the LINK_STATUS using getProgramParameter
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
         logError(gl.getProgramInfoLog(prog));
     }
 
     logMessage("Shader program compiled successfully.");
 }
+
+
 
 
 // Sets the uniform variables in the shader program
@@ -15914,17 +15993,49 @@ function setUniformVariables() {
         0.0, 0.0, 0.0, 1.0
     ];
 
-    // TODO: Tell the current rendering state to use the shader program
+    // Tell the current rendering state to use the shader program
     gl.useProgram(prog);
 
-    // TODO: Get the location of the uniform variable in the shader
+    // Get the location of the uniform variable in the shader
     var transform_loc = gl.getUniformLocation(prog, "transform");
+    
+    var model = matrix;
+    // TODO: Create a rotation matrix using the angle
+    model = rotate(angle, [1.0, 1.0, 0.0]);
 
-    // TODO: Set the data of the uniform.
-    // The values should not be transposed.
-    gl.uniformMatrix4fv(transform_loc, false, matrix);
+    // TODO: Define a camera location
+    var eye = vec3(0, 0, 10);
 
-    logMessage("Set uniform variables.")
+    // TODO: Define the target position
+    var target = vec3(0, 0, 0);
+
+	target[2] += zModify;
+	
+
+    // TODO: Define the up direction
+    var up = vec3(0, 1, 0);
+
+    // TODO: Create view matrix.
+    var view = lookAt(
+        eye,
+        target,
+        up
+    );
+
+
+    // TODO: Calculate the aspect ratio.
+    var aspect = canvas.width / canvas.height;
+
+    // TODO: Create a projection matrix.
+    var projection = perspective(60.0, aspect, 1, 1000.0);
+
+    // TODO: Multiply the matrices before sending to the shader.
+    var transform = mult(projection, mult(view, model));
+
+    // TODO: Set the data of the transformation matrix.
+    gl.uniformMatrix4fv(transform_loc, false, flatten(transform));
+
+    // logMessage("Set uniform variables.")
 }
 
 // Handle for the vertex array object
@@ -15933,50 +16044,79 @@ var vao;
 // Creates VAOs for vertex attributes
 function createVertexArrayObjects() {
 
-    // TODO: Create vertex array object
+    // Create vertex array object
     vao = gl.createVertexArray();
-    // TODO: Bind vertex array so we can modify it
+    // Bind vertex array so we can modify it
     gl.bindVertexArray(vao);
 
-    // TODO: Get shader location of the position vertex attribute.
+    // Get shader location of the position vertex attribute.
     var pos_idx = gl.getAttribLocation(prog, "position");
-    // TODO: Bind the position buffer again
+    // Bind the position buffer again
     gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
-    // TODO: Specify the layout of the data using vertexAttribPointer.
+    // Specify the layout of the data using vertexAttribPointer.
     gl.vertexAttribPointer(pos_idx, 3, gl.FLOAT, false, 0, 0);
-    // TODO: Enable this vertex attribute.
+    // Enable this vertex attribute.
     gl.enableVertexAttribArray(pos_idx);
 
-    // TODO: Repeat for the color vertex attribute. The size is now 4. 
+    // Repeat for the color vertex attribute. The size is now 4. 
     var col_idx = gl.getAttribLocation(prog, "color");
     gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
     gl.vertexAttribPointer(col_idx, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(col_idx);
 
-    // TODO: Unbind array to prevent accidental modification.
+    // Unbind array to prevent accidental modification.
     gl.bindVertexArray(null);
 
     logMessage("Created VAOs.");
 
 }
 
-// Draws the vertex data.
-function render() {
-    // TODO: Clear the screen (for COLOR_BUFFER_BIT)
-    gl.clear(gl.COLOR_BUFFER_BIT);
+var previousTimestamp;
+function updateAngle(timestamp) {
+    // TODO: Initialize previousTimestamp the first time this is called.
+    if (previousTimestamp === undefined) {
+        // console.log("previous" + previousTimestamp);
+        previousTimestamp = timestamp;
+    }
 
-    // TODO: Set the rendering state to use the shader program
+    // TODO: Calculate the change in time in seconds
+    var delta = (timestamp - previousTimestamp) / 1000;
+
+    // TODO: Update the angle using angularSpeed and the change in time
+    angle += angularSpeed*delta;
+    angle -= Math.floor(angle/360.0)*360.0;
+
+    // TODO: Decrease the angular speed using the change in time
+    angularSpeed = Math.max(angularSpeed - 100.0*delta, 0.0);
+
+    // TODO: Update previousTimestamp
+    previousTimestamp = timestamp;
+
+
+
+}
+
+// Draws the vertex data.
+function render(timestamp) {
+    // TODO: Clear the color and depth buffers
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // Set the rendering state to use the shader program
     gl.useProgram(prog);
 
-    // TODO: Bind the VAO
+    // TODO: Call updateAngle
+    updateAngle(timestamp)
+
+    // TODO: Update uniforms
+    setUniformVariables();
+
+    // Bind the VAO
     gl.bindVertexArray(vao);
 
-    // TODO: Draw 6 vertices using the TRIANGLES mode.
-    gl.drawArrays(gl.TRIANGLES, 0, 100);
+    // TODO: Draw the correct number of vertices using the TRIANGLES mode.
+    gl.drawArrays(gl.TRIANGLES, 0, positions.length/3);
 
-    // logMessage("Rendered to the screen!");
-
-    // TODO: Call this function repeatedly with requestAnimationFrame.
+    // Call this function repeatedly with requestAnimationFrame.
     requestAnimationFrame(render);
 }
 
@@ -15991,6 +16131,7 @@ function setEventListeners(canvas) {
 
     canvas.addEventListener('keyup', function (event) {
         document.getElementById("keyup").innerText = event.key;
+		
     });
 
     canvas.addEventListener('mousemove', function (event) {
@@ -16002,9 +16143,13 @@ function setEventListeners(canvas) {
     canvas.addEventListener('click', function (event) {
         click_count += 1;
         document.getElementById("click_count").innerText = click_count;
+
+        // TODO: Increase the rate of rotation
+        // angularSpeed += 50;
+		zModify-=100;
+        
     })
 }
-
 
 // Logging
 
