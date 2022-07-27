@@ -15960,6 +15960,14 @@ function setUniformVariables() {
     // TODO: Create a rotation matrix using the angle
     model = rotate(0, [1.0, 1.0, 0.0]);
 
+	var rotate;
+	var translate;
+	var scalem;
+	//mult these together
+	// model = translate(...);
+
+	// model = 
+
     // TODO: Define a camera location
     var eye = vec3(0, 0, 10);
 
@@ -15977,7 +15985,10 @@ function setUniformVariables() {
         target,
         up
     );
-
+//i'm shifting where my camera is looking at
+//target is the centre of where my camera is pointing
+//don't modify the mesh
+//in the main.vert shader,,,
 	// TODO: Calculate the aspect ratio.
     var aspect = canvas.width / canvas.height;
 
@@ -15985,7 +15996,8 @@ function setUniformVariables() {
     var projection = perspective(60.0, aspect, 0.1, 3000.0);
 
     // TODO: Multiply the matrices before sending to the shader.
-    var transform = mult(projection, mult(view, model));
+    var transform = mult(projection, mult(view, model)); //the right-most matrix is the first; order matters
+	//order: check notes and textbook
 
 
     // TODO: Set the data of the uniform.
@@ -16133,7 +16145,7 @@ function setEventListeners(canvas) {
 	//and try getting it to work with just a click in a direction. that might be better...
 		x_new = event.x;
 		y_new = event.y;
-
+		//change this. DO NOT use target for translations as it is only where the camera is looking technically
 		var x = x_new - x_old;
 		var y = y_new - y_old;
 		target[0] = x / -300;

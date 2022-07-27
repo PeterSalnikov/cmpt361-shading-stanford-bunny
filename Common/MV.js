@@ -319,7 +319,8 @@ function mult( u, v )
 //----------------------------------------------------------------------------
 //
 //  Basic Transformation Matrix Generators
-//
+//use these three functions to generate transformation matrices
+//premultiply them and combine them to make one transformation
 
 function translate( x, y, z )
 {

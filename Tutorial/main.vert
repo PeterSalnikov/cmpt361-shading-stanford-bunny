@@ -22,7 +22,8 @@ void main() {
 
     // TODO: Write the position to gl_Position.
     // Remember, we need to use homogenous coordinates.
-    gl_Position = transform*vec4(position, 1.0f);
+    gl_Position = transform*vec4(position, 1.0f); //all vertices going in will be multiplied by this
+    //compute a separate matrix for translation, rotation, etc.
 
     // TODO: Write the color to the output defined earlier.
     vertexColor = color;
