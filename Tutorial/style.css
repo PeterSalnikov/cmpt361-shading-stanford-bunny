@@ -8,7 +8,7 @@
     padding: 1rem;
     border-radius: 3px;
 }
-
+/* may have to change this value to see the wireframe cube */
 .canvasContainer {
     min-height: 50px;
     aspect-ratio: 1.0;
@@ -16,10 +16,10 @@
     margin: auto;
 }
 
-.messageBox {
+/* .messageBox {
     background-color: white;
     padding: 0.5rem;
-}
+} */
 
 canvas {
     width: 100%;
@@ -29,11 +29,11 @@ canvas {
     border: 1px solid black;
 }
 
-body {
+/* body {
     font-family: sans-serif;
 }
 
 button {
     padding: 0.5em;
     box-shadow: 0 0;
-}
+} */

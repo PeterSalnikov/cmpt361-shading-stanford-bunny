@@ -1,5 +1,3 @@
-// import { flatten } from './MV.js';
-// import { rotate } from './MV.js';
 //each VERTEX represents a point in 3D space
 function get_vertices(){
     return [vec3(-1.537658,1.170480,0.746700),
@@ -5225,7 +5223,7 @@ function get_vertices(){
 			vec3(-1.310712,-0.203998,0.601798),
 			vec3(0.236890,0.613258,1.081982)];
 }
-//each FACE represents a 3-tuple of vertices..? it has to.
+//each FACE represents a 3-tuple of vertices that make up a triangle.
 //positions will be this, but each index is a vertex.
 function get_faces(){
     return [vec3(523,3856,2070),
@@ -15673,11 +15671,35 @@ function get_faces(){
 /*
     Initialization
 */
+
+// asked to draw a wireframe cube/cone. can use vertex data from cube but will draw diagonals.
+// use linestrip to draw cube. 1st vertex starting point, 2nd vertex adds it, etc.
+// will need to create a new shader for wireframe cube/cone as normals will change
 var target = vec3(0,0,0);
 var click_count = 0;
 // The WebGL context.
 var gl
 var canvas;
+
+const matrix = [
+	1.0, 0.0, 0.0, 0.0,
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.0, 0.0, 0.0, 1.0
+];
+
+var translation = matrix;
+
+//translation = translate(0,0,0);
+
+var x_trans;
+var y_trans;
+var z_trans;
+
+var x_angle;
+var y_angle;
+var x_angle_old;
+var y_angle_old;
 
 // Sets up the canvas and WebGL context.
 function initializeContext() {
@@ -15692,7 +15714,7 @@ function initializeContext() {
     // using clientWidth and clientHeight
     canvas.width = pixelRatio * canvas.clientWidth;
     canvas.height = pixelRatio * canvas.clientHeight;
-
+	console.log(pixelRatio);
     // TODO: Set the viewport size
     gl.viewport(0, 0, canvas.width, canvas.height);
 
@@ -15701,7 +15723,7 @@ function initializeContext() {
     // TODO: Set the line width to 1.0.
     gl.lineWidth(1.0);
 
-    logMessage("WebGL initialized.");
+    // logMessage("WebGL initialized.");
 }
 
 async function setup() {
@@ -15720,6 +15742,8 @@ async function setup() {
     // TODO: Compile the shaders
     compileShaders();
 
+
+
     // TODO: Set the uniform variables
     setUniformVariables();
 
@@ -15730,6 +15754,15 @@ async function setup() {
 
     // TODO: Draw!
     requestAnimationFrame(render);
+
+	x_trans = 0;
+	y_trans = 0;
+	z_trans = 0;
+
+	x_angle = 0;
+	y_angle = 0;
+	x_angle_old = 0;
+	y_angle_old = 0;
 
 };
 
@@ -15782,37 +15815,14 @@ var colors = new Array(positions.length).fill([0,0,0,0.5]);
     colors = flatten(colors);
 
 
-
-/*var positions = [
-    -0.8, 0.6, 0,
-    0.8, 0.6, 0,
-    0.8, -0.6, 0,
-    -0.8, 0.6, 0,
-    0.8, -0.6, 0,
-    -0.8, -0.6, 0
-];*/
-
-// Vertex color data in the format [r0, g0, b0, a0, r1, g1, ...].
-// Note that for every vertex position, we have an associated color.
-// The number of tuples between different vertex attributes must be the same.
-/*var colors = [
-    1, 0, 0, 1, // red
-    0, 1, 0, 1, // green
-    0, 1, 1, 1, // blue
-    1, 1, 0, 1, // red
-    0, 1, 1, 1, // blue
-    1, 1, 1, 1 // purple
-];*/
-
-var colors = new Array(positions.length).fill([0,0,0,0.5]);
-
-colors = flatten(colors);
-
 //console.log(positions);
 
 // Buffer objects
 var position_buffer;
 var color_buffer;
+
+var cube_position_buffer;
+var cube_color_buffer;
 
 // Creates buffers using provided data.
 function createBuffers() {
@@ -15823,10 +15833,14 @@ function createBuffers() {
     // considered front-facing.
     position_buffer = gl.createBuffer();
 
+	cube_position_buffer = gl.createBuffer();
+
     // TODO: Bind the buffer as an ARRAY_BUFFER to tell WebGL it will
     // be used as a vertex buffer. Note that if another buffer was previously
     // bound to ARRAY_BUFFER, that binding will be broken.
     gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+
+	// gl.bindBuffer(gl.ARRAY_BUFFER, cube_position_buffer);
 
     // TODO: Set the buffer data of the buffer bound to target 
     // ARRAY_BUFFER with STATIC_DRAW usage. The usage is a hint
@@ -15836,6 +15850,8 @@ function createBuffers() {
         new Float32Array(positions),
         gl.STATIC_DRAW);
 
+
+
     // TODO: Repeat for the color vertex data.
     color_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
@@ -15843,7 +15859,7 @@ function createBuffers() {
         new Float32Array(colors),
         gl.STATIC_DRAW);
 
-    logMessage("Created buffers.");
+    // logMessage("Created buffers.");
 }
 
 // Shader sources
@@ -15873,7 +15889,7 @@ async function loadShaders() {
     // logMessage(vs_source);
     // logMessage(fs_source);
 
-    logMessage("Shader files loaded.")
+    // logMessage("Shader files loaded.")
 }
 
 // Shader handles
@@ -15927,9 +15943,10 @@ function compileShaders() {
         logError(gl.getProgramInfoLog(prog));
     }
 
-    logMessage("Shader program compiled successfully.");
-}
+	//point light code?
 
+    // logMessage("Shader program compiled successfully.");
+}
 
 
 // Sets the uniform variables in the shader program
@@ -15943,12 +15960,7 @@ function setUniformVariables() {
     // Here, this matrix is stored in column-major format.
     // To convert it to row-major, you would take its transpose.
     // For an identity matrix, these are equivalent.
-    const matrix = [
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    ];
+
 
     // TODO: Tell the current rendering state to use the shader program
     gl.useProgram(prog);
@@ -15957,23 +15969,27 @@ function setUniformVariables() {
     var transform_loc = gl.getUniformLocation(prog, "transform");
 
 	var model = matrix;
+	var rotate_x = matrix;
+	var rotate_y = matrix;
     // TODO: Create a rotation matrix using the angle
-    model = rotate(0, [1.0, 1.0, 0.0]);
+    rotate_x = rotate(x_angle, [1.0, 0.0, 0.0]);
+	rotate_y = rotate(y_angle, [0.0,1.0,0.0]);
 
-	var rotate;
-	var translate;
-	var scalem;
+	// var rotate;
+	// var translation = matrix;
+	var scale = matrix;
 	//mult these together
-	// model = translate(...);
 
-	// model = 
+	translation = translate(x_trans,y_trans, z_trans);
+
+
+	scale = scalem(1,1,1);
 
     // TODO: Define a camera location
     var eye = vec3(0, 0, 10);
 
     // TODO: Define the target position
     //target = vec3(0, 0, 0);
-	updatePosition();
 	
 
     // TODO: Define the up direction
@@ -15993,24 +16009,48 @@ function setUniformVariables() {
     var aspect = canvas.width / canvas.height;
 
     // TODO: Create a projection matrix.
-    var projection = perspective(60.0, aspect, 0.1, 3000.0);
+    var projection = perspective(60.0, aspect, 1, 1000.0);
 
     // TODO: Multiply the matrices before sending to the shader.
-    var transform = mult(projection, mult(view, model)); //the right-most matrix is the first; order matters
+    var transform = mult(projection, mult(view, mult(translation, mult(rotate_x, rotate_y)))); //the right-most matrix is the first; order matters
 	//order: check notes and textbook
 
 
     // TODO: Set the data of the uniform.
     // The values should not be transposed.
     gl.uniformMatrix4fv(transform_loc, false, flatten(transform));
-
+	
     //logMessage("Set uniform variables.")
 }
 
-// Handle for the vertex array object
+
+
+// Handle for the vertex array object **and wireframe vertex array object
 var vao;
+var cube_vao;
 
 // Creates VAOs for vertex attributes
+// copy this function and change it for use with the cube and cone.
+//  look at drawArrays command. WebGL documentation
+// check out mozilla documentation for WebGL
+
+// the bunny is at (0,0,0) where the center of the cube will initially be at (5,5,0)
+// after cube/cone is created, (5,5,0) coordinate of the point light can be the center of the cube.
+// there will not be any lighting visible in part d) and e) as this will be implemented in f).
+// the 'rotation' of the light that you will see in part d) and e) will be the cube/cone rotating/panning around the bunny
+// f): first you need normal vectors. need to calculate that using the bunny vertex data. there is a formula for calculating normals of a triangle and its basically picking one point and for the other two vertices of the faces, subtract that point and end up with two vectors. taking the cross-product of the resulting vectors is the normal which points straight out of the surface.
+// make sure that your normal vectors are normalized, s.t all vectors are 1. use normalize from MV.js or there is a built-in function in GLSL.
+// one more thing: the normals above are just normals for the triangles. look into vertex normals as well
+// depending on how many triangles a vertex is involved in, there will be a number of face normals, and the vertex normal will be the average of all of these.
+// if you know the id of each vertex, you can create an array and use that id as an index of array and that id will store each vertex normal.
+// that normal will be the running sum taken before averaging.
+// after averaging, normalize and all should be 1. just start with face normals first.
+
+// additionally:
+// normal vectors are gonna be a vertex attribute. don't send them as uniform as it's per-vertex data.
+// spot light: confusion about spotlight w/attenuation factor. look at what the textbook says about the spotlight. cutoff angle, attenuation coefficient (falloff within the cutoff)
+// spot light and point light will be fairly similar to implement
+// initshaders (from gasket example) gets shader code from html. like the point light example from the internet
 function createVertexArrayObjects() {
 
     // TODO: Create vertex array object
@@ -16036,26 +16076,25 @@ function createVertexArrayObjects() {
     // TODO: Unbind array to prevent accidental modification.
     gl.bindVertexArray(null);
 
-    logMessage("Created VAOs.");
+    // logMessage("Created VAOs.");
 
 }
 
-function updatePosition()
-{
-	
-	// target[0] = click_count;
+// function createCubeVertexArrayObjects() {
 
-	for ( var i = 0; i < positions.length; i += 3)
-	{
+// 	wvao = gl.createVertexArray();
 
-		// positions[i] = click_count;
+// 	gl.bindVertexArray(wvao);
 
-	}
-	// console.log(target[0]);
+// 	var wpos_idx = gl.getAttribLocation(prog, "position");
 
-	// console.log(target);
-	// console.log(target[0]);
-}
+// 	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+
+// 	// gl.vertexAttribPointer(wpos)
+
+// }
+
+
 
 // Draws the vertex data.
 function render() {
@@ -16065,7 +16104,7 @@ function render() {
     // TODO: Set the rendering state to use the shader program
     gl.useProgram(prog);
 
-	updatePosition();
+	// updatePosition();
 	//needed for updating position?
 	setUniformVariables();
 
@@ -16085,71 +16124,110 @@ function render() {
     Input Events
 */
 
-var x_old;
-var y_old;
-var x_new;
-var y_new;
+var left_down = 0;
+var right_down = 0;
+
+
 
 function setEventListeners(canvas) {
     canvas.addEventListener('keydown', function (event) {
-        document.getElementById("keydown").innerText = event.key;
+        // document.getElementById("keydown").innerText = event.key;
 
-		target[2]--;
+		const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
+		switch (event.key) {
+			case "r":
+				// r pressed
+				x_trans = 0;
+				y_trans = 0;
+				z_trans = 0;
+				x_angle = 0;
+				y_angle = 0;
+				break;
+			case "ArrowRight":
+				// Right pressed
+				break;
+			case "ArrowUp":
+				// up arrow
+				z_trans += 0.1;
+				break;
+			case "ArrowDown":
+				// down arrow
+				z_trans -= 0.1;
+				break;
+		}
 
     });
 
     canvas.addEventListener('keyup', function (event) {
-        document.getElementById("keyup").innerText = event.key;
+        // document.getElementById("keyup").innerText = event.key;
 
-			
-		target[2]++;
-		console.log(target[2]);
+			// z_trans -= 0.1;
+			// console.log("key up",z_trans);
+
 
     });
 
     canvas.addEventListener('mousemove', function (event) {
-        document.getElementById("mpos_x").innerText = event.x;
-        document.getElementById("mpos_y").innerText = event.y;
+        
+		if(left_down == 1) {
+			// document.getElementById("mpos_x").innerText = event.x;
+			// document.getElementById("mpos_y").innerText = event.y;
+			//semi-arbitrary modifier numbers to 'center' bunny around the cursor
+			//there's got to be a formula connecting these numbers to make this easier.. look into it
+			
+				x_trans = ((event.x / (canvas.width/2))*8)-8;
+				// console.log(canvas.height);
+				//need to fix y
+				y_trans = ((-1*event.y / (canvas.height/2))*8)+3;
+		}	
+
+		else if(right_down == 1) {
+
+			// x_angle = event.x - x_angle_old;
+			// y_angle = event.y - y_angle_old;
+
+			x_angle = (x_angle_old - event.x) / 3*-1;
+			y_angle = (y_angle_old - event.y) / 3*-1;
+
+			x_angle_old = x_angle;
+			y_angle_old = y_angle;
+		}
+
+
+
+
+
     });
 
     // var click_count = 0;
     canvas.addEventListener('click', function (event) {
         click_count += 1;
-		//simple x,y translation that only goes one way.
+		// console.log(event.which);
 
 		
 
-        document.getElementById("click_count").innerText = click_count;
+        // document.getElementById("click_count").innerText = click_count;
 
     })
 
-	
+	canvas.addEventListener('contextmenu', function(event) {
 
-	//for implementing X,Y translation. 
-	//mousedown/up will not provide live movement updates but 
-	//should move the bunny once the mouse is released
-	//cannot use while(mousedown) as js is single-threaded and will choke the process.
+		event.preventDefault();
+		// console.log(event.button);
+
+	})
+
 	canvas.addEventListener('mousedown', function (event) {
+		if(event.which == 1)
+			left_down = 1;
 
-		x_old = event.x;
-		y_old = event.y;
-
+		else if(event.which == 3)
+			right_down = 1;
 	});
 
 	canvas.addEventListener('mouseup', function (event) {
-	//implementing translation in here for now.
-	//isn't pretty as you can't see where it'll be until mouse is let go
-	//ask in office hours if this is acceptable
-	//to improve: try getting canvas width maybe. 
-	//then you can choose a non-arbitrary number for division
-	//and try getting it to work with just a click in a direction. that might be better...
-		x_new = event.x;
-		y_new = event.y;
-		//change this. DO NOT use target for translations as it is only where the camera is looking technically
-		var x = x_new - x_old;
-		var y = y_new - y_old;
-		target[0] = x / -300;
-		target[1] = y / -300;
+		left_down = 0;
+		right_down = 0;
 
 	});
 
@@ -16159,15 +16237,15 @@ function setEventListeners(canvas) {
 
 // Logging
 
-function logMessage(message) {
-    document.getElementById("messageBox").innerText += `[msg]: ${message}\n`;
-}
+// function logMessage(message) {
+//     document.getElementById("messageBox").innerText += `[msg]: ${message}\n`;
+// }
 
-function logError(message) {
-    document.getElementById("messageBox").innerText += `[err]: ${message}\n`;
-}
+// function logError(message) {
+//     document.getElementById("messageBox").innerText += `[err]: ${message}\n`;
+// }
 
-function logObject(obj) {
-    let message = JSON.stringify(obj, null, 2);
-    document.getElementById("messageBox").innerText += `[obj]:\n${message}\n\n`;
-}
+// function logObject(obj) {
+//     let message = JSON.stringify(obj, null, 2);
+//     document.getElementById("messageBox").innerText += `[obj]:\n${message}\n\n`;
+// }
