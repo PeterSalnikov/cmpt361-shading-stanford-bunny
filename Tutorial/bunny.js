@@ -15675,7 +15675,7 @@ function get_faces(){
 // asked to draw a wireframe cube/cone. can use vertex data from cube but will draw diagonals.
 // use linestrip to draw cube. 1st vertex starting point, 2nd vertex adds it, etc.
 // will need to create a new shader for wireframe cube/cone as normals will change
-var target = vec3(0,0,0);
+
 var click_count = 0;
 // The WebGL context.
 var gl
@@ -15701,6 +15701,8 @@ var y_angle;
 var x_angle_old;
 var y_angle_old;
 
+var cube_angle;
+
 // Sets up the canvas and WebGL context.
 function initializeContext() {
     // TODO: Get and store the webgl context from the canvas    
@@ -15714,14 +15716,16 @@ function initializeContext() {
     // using clientWidth and clientHeight
     canvas.width = pixelRatio * canvas.clientWidth;
     canvas.height = pixelRatio * canvas.clientHeight;
-	console.log(pixelRatio);
+	// console.log(pixelRatio);
     // TODO: Set the viewport size
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    // TODO: Set the clear color to white.
+    // TODO: Set the clear color to black.
     gl.clearColor(0, 0, 0, 1);
     // TODO: Set the line width to 1.0.
     gl.lineWidth(1.0);
+
+	gl.enable(gl.DEPTH_TEST);
 
     // logMessage("WebGL initialized.");
 }
@@ -15733,6 +15737,7 @@ async function setup() {
     // Set event listeners
     setEventListeners(canvas);
 
+	// everything up to requestAnimationFrame is required for all objects to be drawn on screen?
     // TODO: Create vertex buffer data.
     createBuffers();
 
@@ -15742,18 +15747,33 @@ async function setup() {
     // TODO: Compile the shaders
     compileShaders();
 
-
-
     // TODO: Set the uniform variables
-    setUniformVariables();
+    // setUniformVariables();
 
     // TODO: Create vertex array objects
     createVertexArrayObjects();
+	// creating the cube
+	colorCube();
 
-	// target = vec3(0,0,0);
+	createCubeBuffers();
+	await loadWireframeShaders();
+
+	compileCubeShaders();
+    // setUniformVariablesCube();
+
+	createCubeVertexArrayObjects();
+
+
+	createConeBuffers();
+	await loadConeShaders();
+
+	compileConeShaders();
+
+	createConeVertexArrayObjects();
 
     // TODO: Draw!
     requestAnimationFrame(render);
+
 
 	x_trans = 0;
 	y_trans = 0;
@@ -15764,9 +15784,9 @@ async function setup() {
 	x_angle_old = 0;
 	y_angle_old = 0;
 
-};
+	cube_angle = 0;
 
-// console.log(target);
+};
 
 window.onload = setup;
 
@@ -15781,41 +15801,117 @@ var positions = [];
 indices = flatten(indices);
 //shift the indices by 1, since javascript indexes start at 0
 indices = indices.map(i => i - 1);
-//vertices = flatten(vertices);
-// console.log(indices.length);
-// console.log(vertices.length);
-// vertices = vertices.map(i => i / 4);
-var max = 0;
+
 for(var i = 0; i < indices.length; i++)
 {
-
+	//formatting the vertices in order
     positions.push(vertices[indices[i]]);
-    // console.log(indices[i]);
-    
-    
-        if (indices[i] > max)
-        {
-            
-            max = indices[i+1];
-
-        }
-    
 }
 
-//console.log(max);
-//console.log(vertices.length);
-//console.log(positions);
-// console.log(positions.length);
 // flatten
 positions = flatten(positions);
-// positions = positions.map( i => i / 3);
 
+// making the bunny grey
 var colors = new Array(positions.length).fill([0,0,0,0.5]);
+// flatten
+colors = flatten(colors);
 
-    colors = flatten(colors);
+var positions_cube = [];
+var colors_cube = [];
 
+function colorCube()
+{
+    //the six faces of the cube; each face consists of two triangles
+    quad( 1, 0, 3, 2 );
+    quad( 2, 3, 7, 6 );
+    quad( 3, 0, 4, 7 );
+    quad( 6, 5, 1, 2 );
+    quad( 4, 5, 6, 7 );
+    quad( 5, 4, 0, 1 );
 
-//console.log(positions);
+    // flatten
+    positions_cube = flatten(positions_cube);
+    colors_cube = flatten(colors_cube);
+}
+
+var vertexColors = [ 1.0, 1.0, 1.0, 0.0 ];   // white
+
+function quad(a, b, c, d) {
+    var vertices_cube = [
+        vec3( 4.5, 4.5,  0.5),
+        vec3( 4.5,  5.5,  0.5),
+        vec3(  5.5,  5.5,  0.5),
+        vec3(  5.5, 4.5,  0.5),
+        vec3( 4.5, 4.5, -0.5),
+        vec3( 4.5,  5.5, -0.5),
+        vec3(  5.5,  5.5, -0.5),
+        vec3(  5.5, 4.5, -0.5)
+    ];
+
+    // We need to parition the quad into two triangles in order for
+    // WebGL to be able to render it.  In this case, we create two
+    // triangles from the quad indices
+
+    //vertex color assigned by the index of the vertex
+
+    var indices_cube = [ a, b, c, a, c, d ];
+
+    for ( var i = 0; i < indices_cube.length; ++i ) {
+        positions_cube.push( vertices_cube[indices_cube[i]] );//vertices[indices[0]] = vertices[a] = vertices[1] = (-0.5,0.5,0.5)
+        //not the way we want to do it for bunny. we're given the faces already...
+        //colors.push( vertexColors[indices[i]] );
+
+        // for solid colored faces use
+        colors_cube.push(vertexColors);
+
+    }
+}
+// vertices and indices of the wireframe cone. courtesy of:
+// http://voxelent.com/html/beginners-guide/chapter_2/ch2_Cone.html
+var positions_cone = [];
+
+var vertices_cone =[1.5, 0, 0, 
+    -1.5, 1, 0, 
+    -1.5, 0.809017,	0.587785,
+    -1.5, 0.309017,	0.951057, 
+    -1.5, -0.309017, 0.951057, 
+    -1.5, -0.809017, 0.587785,
+    -1.5, -1, 0, 
+    -1.5, -0.809017, -0.587785,
+    -1.5, -0.309017, -0.951057, 
+    -1.5, 0.309017,	-0.951057, 
+    -1.5, 0.809017,	-0.587785];
+ 
+var indices_cone = [0, 1, 2,
+    0, 2, 3,
+    0, 3, 4,
+    0, 4, 5,
+    0, 5, 6,
+    0, 6, 7,
+    0, 7, 8,
+    0, 8, 9,
+    0, 9, 10,
+    0, 10, 1];
+
+for(var i = 1; i < vertices_cone.length - 1; i += 3) {
+
+	vertices_cone[i] += 4;
+	
+
+}
+
+for(var i = 2; i < vertices_cone.length - 2; i+= 3)
+	vertices_cone[i] += 2;
+for(var i = 0; i < indices_cone.length; i++)
+{
+	//formatting the vertices in order
+	positions_cone.push(vertices_cone[indices_cone[i]]);
+}
+
+var colors_cone = new Array(positions_cone.length).fill([1,1,1,0]);
+
+// positions_cone = flatten(positions_cone);
+colors_cone = flatten(colors_cone);
 
 // Buffer objects
 var position_buffer;
@@ -15823,6 +15919,9 @@ var color_buffer;
 
 var cube_position_buffer;
 var cube_color_buffer;
+
+var cone_position_buffer;
+var cone_color_buffer;
 
 // Creates buffers using provided data.
 function createBuffers() {
@@ -15833,14 +15932,11 @@ function createBuffers() {
     // considered front-facing.
     position_buffer = gl.createBuffer();
 
-	cube_position_buffer = gl.createBuffer();
-
     // TODO: Bind the buffer as an ARRAY_BUFFER to tell WebGL it will
     // be used as a vertex buffer. Note that if another buffer was previously
     // bound to ARRAY_BUFFER, that binding will be broken.
     gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
 
-	// gl.bindBuffer(gl.ARRAY_BUFFER, cube_position_buffer);
 
     // TODO: Set the buffer data of the buffer bound to target 
     // ARRAY_BUFFER with STATIC_DRAW usage. The usage is a hint
@@ -15850,8 +15946,6 @@ function createBuffers() {
         new Float32Array(positions),
         gl.STATIC_DRAW);
 
-
-
     // TODO: Repeat for the color vertex data.
     color_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
@@ -15860,6 +15954,42 @@ function createBuffers() {
         gl.STATIC_DRAW);
 
     // logMessage("Created buffers.");
+}
+
+function createCubeBuffers() {
+
+	cube_position_buffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cube_position_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,
+        new Float32Array(positions_cube),
+        gl.STATIC_DRAW);
+
+    // Repeat for color
+    cube_color_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cube_color_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,
+        new Float32Array(colors_cube),
+        gl.STATIC_DRAW);
+
+}
+
+function createConeBuffers() {
+
+	cone_position_buffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cone_position_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,
+        new Float32Array(positions_cone),
+        gl.STATIC_DRAW);
+
+    // Repeat for color
+    cone_color_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cone_color_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,
+        new Float32Array(colors_cone),
+        gl.STATIC_DRAW);
+
 }
 
 // Shader sources
@@ -15890,6 +16020,28 @@ async function loadShaders() {
     // logMessage(fs_source);
 
     // logMessage("Shader files loaded.")
+}
+
+var vs_cube_src;
+var fs_cube_src;
+
+var vs_cone_src;
+var fs_cone_src;
+
+async function loadWireframeShaders() {
+
+	vs_cube_src = document.getElementById("vertex-shader-cube-3d");
+
+	fs_cube_src = document.getElementById("fragment-shader-cube-3d");
+
+}
+
+async function loadConeShaders() {
+
+	vs_cone_src = document.getElementById("vertex-shader-cone-3d");
+
+	fs_cone_src = document.getElementById("fragment-shader-cone-3d");
+
 }
 
 // Shader handles
@@ -15943,11 +16095,98 @@ function compileShaders() {
         logError(gl.getProgramInfoLog(prog));
     }
 
-	//point light code?
-
     // logMessage("Shader program compiled successfully.");
 }
 
+var vs_cube;
+var fs_cube;
+var prog_cube;
+
+function compileCubeShaders() {
+
+	vs_cube = gl.createShader(gl.VERTEX_SHADER);
+
+	gl.shaderSource(vs_cube, vs_cube_src.text);
+
+	gl.compileShader(vs_cube);
+
+	if (!gl.getShaderParameter(vs_cube, gl.COMPILE_STATUS)) {
+        logError(gl.getShaderInfoLog(vs_cube));
+        gl.deleteShader(vs_cube);
+    }
+
+	fs_cube = gl.createShader(gl.FRAGMENT_SHADER);
+
+	gl.shaderSource(fs_cube, fs_cube_src.text);
+
+	gl.compileShader(fs_cube);
+
+    if (!gl.getShaderParameter(fs_cube, gl.COMPILE_STATUS)) {
+        logError(gl.getShaderInfoLog(fs_cube));
+        gl.deleteShader(fs_cube);
+    }
+
+	prog_cube = gl.createProgram();
+
+    // TODO: Attach the vertex and fragment shaders
+    // to the program.
+    gl.attachShader(prog_cube, vs_cube);
+    gl.attachShader(prog_cube, fs_cube);
+
+    // TODO: Link the program
+    gl.linkProgram(prog_cube);
+
+    // TODO: Check the LINK_STATUS using getProgramParameter
+    if (!gl.getProgramParameter(prog_cube, gl.LINK_STATUS)) {
+        logError(gl.getProgramInfoLog(prog_cube));
+    }
+
+}
+
+var vs_cone;
+var fs_cone;
+var prog_cone;
+
+function compileConeShaders() {
+
+	vs_cone = gl.createShader(gl.VERTEX_SHADER);
+
+	gl.shaderSource(vs_cone, vs_cone_src.text);
+
+	gl.compileShader(vs_cone);
+
+	if (!gl.getShaderParameter(vs_cone, gl.COMPILE_STATUS)) {
+        logError(gl.getShaderInfoLog(vs_cone));
+        gl.deleteShader(vs_cone);
+    }
+
+	fs_cone = gl.createShader(gl.FRAGMENT_SHADER);
+
+	gl.shaderSource(fs_cone, fs_cone_src.text);
+
+	gl.compileShader(fs_cone);
+
+    if (!gl.getShaderParameter(fs_cone, gl.COMPILE_STATUS)) {
+        logError(gl.getShaderInfoLog(fs_cone));
+        gl.deleteShader(fs_cone);
+    }
+
+	prog_cone = gl.createProgram();
+
+    // TODO: Attach the vertex and fragment shaders
+    // to the program.
+    gl.attachShader(prog_cone, vs_cone);
+    gl.attachShader(prog_cone, fs_cone);
+
+    // TODO: Link the program
+    gl.linkProgram(prog_cone);
+
+    // TODO: Check the LINK_STATUS using getProgramParameter
+    if (!gl.getProgramParameter(prog_cone, gl.LINK_STATUS)) {
+        logError(gl.getProgramInfoLog(prog_cone));
+    }
+
+}
 
 // Sets the uniform variables in the shader program
 function setUniformVariables() {
@@ -15989,7 +16228,7 @@ function setUniformVariables() {
     var eye = vec3(0, 0, 10);
 
     // TODO: Define the target position
-    //target = vec3(0, 0, 0);
+    var target = vec3(0, 0, 0);
 	
 
     // TODO: Define the up direction
@@ -16009,7 +16248,7 @@ function setUniformVariables() {
     var aspect = canvas.width / canvas.height;
 
     // TODO: Create a projection matrix.
-    var projection = perspective(60.0, aspect, 1, 1000.0);
+    var projection = perspective(60.0, aspect, 0.1, 1000.0);
 
     // TODO: Multiply the matrices before sending to the shader.
     var transform = mult(projection, mult(view, mult(translation, mult(rotate_x, rotate_y)))); //the right-most matrix is the first; order matters
@@ -16023,11 +16262,120 @@ function setUniformVariables() {
     //logMessage("Set uniform variables.")
 }
 
+function setUniformVariablesCube() {
+
+	const matrix = [
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    ];
+
+	gl.useProgram(prog_cube);
+
+    // TODO: Get the location of the uniform variable in the shader
+    var transform_loc = gl.getUniformLocation(prog_cube, "transformCube");
+
+	var model = matrix;
+	// handling rotation of the cube
+	model = rotate(cube_angle, [0.0,1.0,0.0]);
+	//toggle spotlight rotation
+	if(p_down % 2 == 0)
+		cube_angle++;
+
+    // TODO: Define a camera location
+    var eye = vec3(0,0,10);
+
+    // TODO: Define the target position
+    var target = vec3(0, 0, 0);
+	
+
+    // TODO: Define the up direction
+    var up = vec3(0, 1, 0);
+
+    // TODO: Create view matrix.
+    var view = lookAt(
+        eye,
+        target,
+        up
+    );
+//i'm shifting where my camera is looking at
+//target is the centre of where my camera is pointing
+//don't modify the mesh
+//in the main.vert shader,,,
+	// TODO: Calculate the aspect ratio.
+    var aspect = canvas.width / canvas.height;
+
+    // TODO: Create a projection matrix.
+    var projection = perspective(60.0, aspect, 0.1, 1000.0);
+
+    // TODO: Multiply the matrices before sending to the shader.
+    var transform = mult(projection, mult(view,model));
+	//order: check notes and textbook
+
+
+    // TODO: Set the data of the uniform.
+    // The values should not be transposed.
+    gl.uniformMatrix4fv(transform_loc, false, flatten(transform));
+
+}
+
+function setUniformVariablesCone() {
+
+	const matrix = [
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    ];
+
+	gl.useProgram(prog_cone);
+
+    // TODO: Get the location of the uniform variable in the shader
+    var transform_loc = gl.getUniformLocation(prog_cone, "transformCone");
+
+	var model = matrix;
+	// handling rotation of the cone
+	model = rotate(45, [0.0,1.0,0.0]);
+
+    // TODO: Define a camera location
+    var eye = vec3(0,0,10);
+
+    // TODO: Define the target position
+    var target = vec3(0, 0, 0);
+	
+
+    // TODO: Define the up direction
+    var up = vec3(0, 1, 0);
+
+    // TODO: Create view matrix.
+    var view = lookAt(
+        eye,
+        target,
+        up
+    );
+//i'm shifting where my camera is looking at
+//target is the centre of where my camera is pointing
+//don't modify the mesh
+//in the main.vert shader,,,
+	// TODO: Calculate the aspect ratio.
+    var aspect = canvas.width / canvas.height;
+
+    // TODO: Create a projection matrix.
+    var projection = perspective(60.0, aspect, 0.1, 1000.0);
+
+    // TODO: Multiply the matrices before sending to the shader.
+    var transform = mult(projection, mult(view,model));
+	//order: check notes and textbook
+
+    // TODO: Set the data of the uniform.
+    // The values should not be transposed.
+    gl.uniformMatrix4fv(transform_loc, false, flatten(transform));
+
+}
 
 
 // Handle for the vertex array object **and wireframe vertex array object
-var vao;
-var cube_vao;
 
 // Creates VAOs for vertex attributes
 // copy this function and change it for use with the cube and cone.
@@ -16051,6 +16399,11 @@ var cube_vao;
 // spot light: confusion about spotlight w/attenuation factor. look at what the textbook says about the spotlight. cutoff angle, attenuation coefficient (falloff within the cutoff)
 // spot light and point light will be fairly similar to implement
 // initshaders (from gasket example) gets shader code from html. like the point light example from the internet
+// initializing vertex array objects
+var vao;
+var cube_vao;
+var cone_vao;
+
 function createVertexArrayObjects() {
 
     // TODO: Create vertex array object
@@ -16080,26 +16433,56 @@ function createVertexArrayObjects() {
 
 }
 
-// function createCubeVertexArrayObjects() {
+function createCubeVertexArrayObjects() {
 
-// 	wvao = gl.createVertexArray();
+	cube_vao = gl.createVertexArray();
 
-// 	gl.bindVertexArray(wvao);
+	gl.bindVertexArray(cube_vao);
 
-// 	var wpos_idx = gl.getAttribLocation(prog, "position");
+	var cube_pos_idx = gl.getAttribLocation(prog_cube, "cube_position");
 
-// 	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+	gl.bindBuffer(gl.ARRAY_BUFFER, cube_position_buffer);
 
-// 	// gl.vertexAttribPointer(wpos)
+	gl.vertexAttribPointer(cube_pos_idx, 3, gl.FLOAT, false, 0,0);
 
-// }
+	gl.enableVertexAttribArray(cube_pos_idx);
 
+	var cube_col_idx = gl.getAttribLocation(prog_cube, "cube_color");
+	gl.bindBuffer(gl.ARRAY_BUFFER, cube_color_buffer);
+	gl.vertexAttribPointer(cube_col_idx, 4, gl.FLOAT, false, 0,0);
+	gl.enableVertexAttribArray(cube_col_idx);
 
+	gl.bindVertexArray(null);
+
+}
+
+function createConeVertexArrayObjects() {
+
+	cone_vao = gl.createVertexArray();
+
+	gl.bindVertexArray(cone_vao);
+
+	var cone_pos_idx = gl.getAttribLocation(prog_cone, "cone_position");
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, cone_position_buffer);
+
+	gl.vertexAttribPointer(cone_pos_idx, 3, gl.FLOAT, false, 0,0);
+
+	gl.enableVertexAttribArray(cone_pos_idx);
+
+	var cone_col_idx = gl.getAttribLocation(prog_cone, "cone_color");
+	gl.bindBuffer(gl.ARRAY_BUFFER, cone_color_buffer);
+	gl.vertexAttribPointer(cone_col_idx, 4, gl.FLOAT, false, 0,0);
+	gl.enableVertexAttribArray(cone_col_idx);
+
+	gl.bindVertexArray(null);
+
+}
 
 // Draws the vertex data.
 function render() {
     // TODO: Clear the screen (for COLOR_BUFFER_BIT)
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // TODO: Set the rendering state to use the shader program
     gl.useProgram(prog);
@@ -16111,9 +16494,30 @@ function render() {
     // TODO: Bind the VAO
     gl.bindVertexArray(vao);
 
-    // TODO: Draw 6 vertices using the TRIANGLES mode.
+    // TODO: Draw vertices using the TRIANGLES mode.
     gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
 
+	// gl.clear(gl.DEPTH_BUFFER_BIT);
+
+	// console.log(positions_cube.length);
+
+	gl.useProgram(prog_cube);
+
+	setUniformVariablesCube();
+
+	gl.bindVertexArray(cube_vao);
+
+	gl.drawArrays(gl.LINE_STRIP, 0, positions_cube.length / 3);
+
+	// gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	gl.useProgram(prog_cone);
+
+	setUniformVariablesCone();
+
+	gl.bindVertexArray(cone_vao);
+
+	gl.drawArrays(gl.LINE_STRIP, 0, positions_cone.length / 3);
     // logMessage("Rendered to the screen!");
 
     // TODO: Call this function repeatedly with requestAnimationFrame.
@@ -16123,11 +16527,11 @@ function render() {
 /*
     Input Events
 */
-
+// detects LMB or RMB press
 var left_down = 0;
 var right_down = 0;
-
-
+// for the p key, part d)
+var p_down = 0;
 
 function setEventListeners(canvas) {
     canvas.addEventListener('keydown', function (event) {
@@ -16154,8 +16558,13 @@ function setEventListeners(canvas) {
 				// down arrow
 				z_trans -= 0.1;
 				break;
+			case "p":
+				// p key
+				p_down++;
+				break;
+				
 		}
-
+		// console.log(event.key);
     });
 
     canvas.addEventListener('keyup', function (event) {
