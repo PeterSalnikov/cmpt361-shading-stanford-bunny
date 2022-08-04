@@ -1,0 +1,5 @@
+  I would like to acknowledge the invaluable help and direction provided by TA Shishir during office hours, as well as 3D cone vertex/index co-ordinates from a website that I have included the link to within bunny.js. The co-ordinates were the extent of the aid received from that website. While the cone portion of the code was not completed, it would have proven helpful moving forward.
+
+  I was able to complete the assignment steps fully up to part d), up to drawing an auto-rotating wireframe cube whose rotation can be paused upon pressing the 'p' key.
+
+  My testing was done using the Live Server extension available in VSCode for convenience, but the code will work just as well on the provided server.py file. No additional features were added.
