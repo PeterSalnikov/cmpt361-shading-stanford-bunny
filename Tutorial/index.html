@@ -9,6 +9,69 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
+<div class="canvasContainer">
+    <canvas id="myCanvas" tabindex="1"></canvas>
+</div>
+
+<script  id="vertex-shader-cube-3d" type="x-shader/x-vertex">#version 300 es
+    layout(location = 0) in vec3 cube_position;
+    layout(location = 1) in vec4 cube_color;
+
+    smooth out vec4 vertexColorCube;
+    uniform mat4 transformCube;
+
+    void main() {
+
+        gl_Position = transformCube*vec4(cube_position, 1.0f);
+
+        vertexColorCube = cube_color;
+
+    }
+
+</script>
+
+<script  id="fragment-shader-cube-3d" type="x-shader/x-fragment">#version 300 es
+    in mediump vec4 vertexColorCube;
+
+    out mediump vec4 outputColorCube;
+
+    void main() {
+
+        outputColorCube = vertexColorCube;
+
+    }
+
+</script>
+
+<script  id="vertex-shader-cone-3d" type="x-shader/x-vertex">#version 300 es
+    layout(location = 0) in vec3 cone_position;
+    layout(location = 1) in vec4 cone_color;
+
+    smooth out vec4 vertexColorCone;
+    uniform mat4 transformCone;
+
+    void main() {
+
+        gl_Position = transformCone*vec4(cone_position, 1.0f);
+
+        vertexColorCone = cone_color;
+
+    }
+
+</script>
+
+<script  id="fragment-shader-cone-3d" type="x-shader/x-fragment">#version 300 es
+    in mediump vec4 vertexColorCone;
+
+    out mediump vec4 outputColorCone;
+
+    void main() {
+
+        outputColorCone = vertexColorCone;
+
+    }
+
+</script>
 
 <body>
 
@@ -16,9 +79,7 @@
 
     <!-- <h2>Canvas</h2> -->
 
-    <div class="canvasContainer">
-        <canvas id="myCanvas" tabindex="1"></canvas>
-    </div>
+
 
     <!-- <h2>Message Box</h2>
     <div class="myClass">
